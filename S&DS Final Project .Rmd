@@ -3,9 +3,9 @@ title: "S&DS 230 Final Project"
 author: "Arav Bhagwati, Sara Cao, Aadi Krishna, and Hiren Parekh"
 date: "2023-08-06"
 output:
-  html_document: default
-  pdf_document: default
   word_document: default
+  pdf_document: default
+  html_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -22,23 +22,32 @@ In a world where our interactions with digital media inform our everyday decisio
 ## Data
 
 ```{r}
-movies<-read.csv("movie_statistic_dataset.csv")
+
+library(olsrr)
+source("http://www.reuningscherer.net/s&ds230/Rfuncs/regJDRS.txt")
+
+movies<-read.csv("/Users/user3/Downloads/movie_statistic_dataset.csv")
 head(movies)
 names(movies)
 dim(movies)
 ```
 ### Variables Used (renamed during cleaning)
+** Categorical Variables
 * genres: genres of movies, 20 different categories
-* runtimeMins: length of movie in minutes
-* averageRating: the average rating given by online users for a particular movie
-* numberOfVotes: the number of votes given by online users for a particular movie
+* productionYear: denotes whether the movie came out before/during 2015 or after 2015
+* director_professions: comma separated list of professions of the movie's director
+
+** Continuous Variables
 * approvalIndex: a normalized indicator (on scale 0-10) calculated by multiplying the logarithm of the number of
 votes by the average users rating. It provides a concise measure of a movie's overall popularity and approval among
 online viewers, penalizing both films that got too few reviews and blockbusters that got too many.
 * productionBudget: production budget in millions of dollars
 * domesticGross: domestic earnings in millions of dollars
 * worldwideGross: worldwide earnings in millions of dollars
-* productionYear: denotes whether the movie came out before/during 2015 or after 2015
+* runtimeMins: length of movie in minutes
+* averageRating: the average rating given by online users for a particular movie
+* numberOfVotes: the number of votes given by online users for a particular movie
+
 
 ## Data Cleaning & Process
 ```{r}
@@ -48,7 +57,7 @@ movies_com<-movies[complete.cases(movies),]
 dim(movies_com)
 ```
 
-```{r}
+```{r echo = T, results = 'hide'}
 movies$director_name<-gsub("-", NA, movies$director_name)
 movies$director_professions<-gsub("-", NA, movies$director_professions)
 movies$director_birthYear<-gsub("-", NA, movies$director_birthYear)
@@ -60,7 +69,7 @@ head(movies_com)
 dim(movies_com)
 movies_com$genres
 ```
-*First, we marked all columns with missing information as NA and removed all rows with NA values entirely.*
+First, we marked all columns with missing information as NA and removed all rows with NA values entirely.
 
 
 ```{r}
@@ -79,8 +88,9 @@ movie1 <- cbind(movie1,indmat)
 names(movie1)
 
 sum(movie1$Action)
+
 ```
-*Next, we noticed that each movie is categorized by multiple genres, and each genre is separated by commas in the "genres" column. To fix this, we created a new dataframe called movie1 that takes the genre values from movies_com and creates a binary indicator matrix for the 8 most common genres, appending these genre indicators as additional columns to the original dataset. Each movie is represented by a binary vector indicating the genres it belongs to.*
+Next, we noticed that each movie is categorized by multiple genres, and each genre is separated by commas in the "genres" column. To fix this, we created a new dataframe called movie1 that takes the genre values from movies_com and creates a binary indicator matrix for the 8 most common genres, appending these genre indicators as additional columns to the original dataset. Each movie is represented by a binary vector indicating the genres it belongs to.
 
 
 ```{r}
@@ -89,7 +99,7 @@ movie1$productionYear <- "After 2015"
 movie1$productionYear[movie1$production_date <= 2015] <- "Before or During 2015"
 ```
 
-*Here, we added a new column to the dataframe called "productionYear" that denotes whether a film was released before/during 2015 or after 2015.*
+Here, we added a new column to the dataframe called "productionYear" that denotes whether a film was released before/during 2015 or after 2015.
 
 ```{r}
 names(movie1)[names(movie1) == "movie_title"] <- "title"
@@ -114,7 +124,7 @@ head(movie1)
 attach(movie1)
 ```
 
-*Finally, we adjusted the monetary columns to be in millions of dollars and cleaned up the column names in the dataframe so that calling variables would be easier.*
+Finally, we adjusted the monetary columns to be in millions of dollars and cleaned up the column names in the dataframe so that calling variables would be easier. 
 
 ## Plots
 
@@ -123,7 +133,7 @@ hist(productionBudget, breaks = 50, col = "red", main = "Histogram of Movie Prod
 
 hist(approvalIndex, breaks = 50, col = "orange", main = "Histogram of Movie Approval Index Score", xlab = "Approval Index Score")
 
-boxplot(domesticGross, horizontal = TRUE, col = "blue", lwd = 2, main = "Movie Domestic Gross", xlab = "Millions of Dollars")
+boxplot(domesticGross, horizontal = TRUE, col = "blue", lwd = 2, main = "Movie Domestic Gross Income", xlab = "Millions of Dollars")
 
 plot(productionBudget, approvalIndex, pch = 19, col = "orange", xlab = "Movie Budget (Millions of Dollars)", ylab = "Approval Index Score", main = "Movie Approval Index Score vs. Production Budget")
 mtext(paste("Correlation =", round(cor(productionBudget, approvalIndex, use = "complete.obs"), 2)), cex = .8)
@@ -133,24 +143,24 @@ mtext(paste("Correlation =", round(cor(productionBudget, domesticGross, use = "c
 
 library(car)
 qqPlot(approvalIndex, pch = 19, main = "Normal Quantile Plot of Approval Index")
-qqPlot(log(domesticGross), pch = 19, main = "Normal Quantile Plot of Domestic Gross")
+qqPlot(log(domesticGross), pch = 19, main = "Normal Quantile Plot of Domestic Gross Income")
 
 ```
 
-*To get a sense of the dataset and an overall view on how it behaves, we started off by plotting different variables. From these graphs, it is evident that the production budget and the domestic gross are heavily right skewed while the approval index score is approximately normally distributed. There is a somewhat high positive correlation between domestic gross and production budget, but the data does not seem to take on any concrete shape.*
+To get a sense of the dataset and an overall view on how it behaves, we started off by plotting different variables. We created seven graphs: a histogram of movie produciton budget, a histogram of movie approval index score, a boxplot of movie domestic gross, a scatterplot of movie approval index score vs. production budget, a scatterplot of movie domestic gross vs. production budget on the log scale, a normal quantile plot of approval index, and a normal quantile plot of domestic gross. From these graphs, it is evident that the production budget and the domestic gross are heavily right skewed while the approval index score is approximately normally distributed. There is a somewhat high positive correlation between domestic gross and production budget on the log scale, but the data does not seem to take on any concrete shape. Meanwhile, movie approval index score vs. production budget appear to have a weak positive correlation; the data does not appear to take on any concrete shape here. With the normal quantile plot, we can easily determine that approval index has an approximately normal distribution with few outliers outside of the 95% confidence band. On the other hand, analyzing the normal quantile plot for domestic gross, we can determine that domestic gross data has a significant left skewed nature.
 
 
 ```{r}
-boxplot(log(domesticGross) ~ productionYear, main = "Boxplot of Log Domestic Gross by Production Year", col = c(2, 4), lwd = 2, xlab = "Production Year", ylab = "Log Domestic Gross (Millions of Dollars)")
+boxplot(log(domesticGross) ~ productionYear, main = "Boxplot of Log Domestic Gross by \nProduction Year", col = c(2, 4), lwd = 2, xlab = "Production Year", ylab = "Log Domestic Gross (Millions of Dollars)")
 test1 <- t.test(log(domesticGross) ~ productionYear, conf.level = .99)
 test1
 
 summary(domesticGross)
 ```
 
-*We decided to specifically analyze the relationship between production year and domestic gross (on the log scale) -- does the passage of time have an effect on how well movies do? From the boxplots, there doesn't seem to be a visible relationship between the log of domestic gross and production year, since both timeframes have similar medians and interquartile ranges. However, there are some outliers, especially in the "Before or During 2015" category, which can have a large effect on the overall relationship between the two variables. From the t-test, we can conclude that the true difference in means between movies released After 2015 and movies released Before or During 2015 is not equal to 0, because the p-value is less than the threshold of 0.05 and the confidence interval does not capture the value of 0.*
-
-
+We decided to specifically analyze the relationship between production year and domestic gross (on the log scale) -- does the passage of time have an effect on how well movies do? From the boxplots, there doesn't seem to be a visible relationship between the log of domestic gross and production year, since both timeframes have similar medians and interquartile ranges. However, there are some outliers, especially in the "Before or During 2015" category, which can have a large effect on the overall relationship between the two variables. From the t-test, we can conclude that the true difference in means between movies released After 2015 and movies released Before or During 2015 is not equal to 0, because the p-value is less than the threshold of 0.05 and the confidence interval does not capture the value of 0.
+  
+  
 ```{r}
 set.seed(230) 
 N <- 10000
@@ -166,16 +176,16 @@ for (i in 1:N) {
 ci <- quantile(diffGross, c(0.005, 0.995))
 round(ci, 2)
 
-hist(diffGross, col = "blue", main = "Bootstrapped Sample Mean Diff in Domestic Gross of Movies (Log Scale)", xlab = "Log Domestic Gross (Millions of Dollars)", breaks = 50, cex.main = 1.0)
+hist(diffGross, col = "blue", main = "Bootstrapped Sample Mean Diff in Domestic \nGross of Movies (Log Scale)", xlab = "Log Domestic Gross (Millions of Dollars)", breaks = 50, cex.main = 1.0)
 
 abline(v = ci, lwd = 3, col = "red")
 abline(v = test1$conf.int, lwd = 3, col = "green", lty = 2)
 legend("topright", c("Original CI", "Boot CI"), lwd = 3, col = c("green", "red"), lty = c(2,1))
 ```
 
-*The bootstrapped sample results of the mean difference in domestic gross of movies (on the log scale) affirm the conclusion we drew from the t-test. Both the original and bootstrapped confidence intervals are pretty similar--the bootstrapped CI has a slightly larger range. Neither CI has the value zero in it, which is evidence that there is a statistically significant difference between the mean differences in domestic gross.*
-
-
+The bootstrapped sample results of the mean difference in domestic gross of movies (on the log scale) affirm the conclusion we drew from the t-test. Both the original and bootstrapped confidence intervals are pretty similar--the bootstrapped CI has a slightly larger range. Neither CI has the value zero in it, which is evidence that there is a statistically significant difference between the mean differences in domestic gross.
+  
+  
 ```{r}
 set.seed(230)
 
@@ -190,67 +200,18 @@ for (i in 1:N) {
   diffvals[i] <- median(log(domesticGross[fakeyear == "After 2015"])) - median(log(domesticGross[fakeyear == "Before or During 2015"]))
 }
 
-hist(diffvals, main = "Permuted Sample Median Diff in Domestic Gross (Log Scale)", xlab = "Log Domestic Gross (Millions of Dollars)", col = "blue", breaks = 30)
+hist(diffvals, main = "Permuted Sample Median Diff in Domestic \nGross (Log Scale)", xlab = "Log Domestic Gross (Millions of Dollars)", col = "blue", breaks = 30)
 abline(v = diffMedian, col = "red", lwd = 3)
 text(diffMedian + 0.03, 550, paste("Actual Diff in Medians =", round(diffMedian,2)), srt = 90)
 
 mean(abs(diffvals) >= abs(diffMedian))
 ```
-*In the last visual representation for log domestic gross by production year, we performed a permutation test to obtain a p-value for a hypothesis test. The null hypothesis is that there is no significant difference between median domestic gross for movies released before/during 2015 and after 2015. The alternative hypothesis is that there is a statistically significant difference between median domestic gross for movies released before/during 2015 and after 2015. From the p-value, we can conclude that the null hypothesis cannot be rejected because the p-value of 0.49 is greater than 0.05. This is shown in the histogram as the red line denoting the actual difference in medians lies within the permuted sample median values.*
+In the last visual representation for log domestic gross by production year, we performed a permutation test to obtain a p-value for a hypothesis test. The null hypothesis is that there is no significant difference between median domestic gross for movies released before/during 2015 and after 2015. The alternative hypothesis is that there is a statistically significant difference between median domestic gross for movies released before/during 2015 and after 2015. From the p-value, we can conclude that the null hypothesis cannot be rejected because the p-value of 0.49 is greater than 0.05. This is shown in the histogram as the red line denoting the actual difference in medians lies within the permuted sample median values.
 
-```{r}
-names(movie1)
-movie2 <- movie1[, c(13, 12, 15:22, 2, 4, 9, 10, 11)]
-names(movie2)
-dim(movie2)
-```
-*Here, we wanted to fit a model that looks at possible predictors of domestic earnings (domestic gross the on log scale). In order to do this, we made a new dataset above called 'movie2' that contains most of the relevant columns.*
-
-```{r}
-library(leaps)
-mod <- regsubsets(log(movie2$domesticGross) ~ ., data = movie2, nvmax = length(movie2) - 1)
-modsum <- summary(mod)
-modsum$which
-```
-*Above, we performed best subsets regression using the 'regsubsets' function in the 'leaps' package and displayed 'modsum$which' in order to get a decent sense on what variables in 'movie2' are being included in each step of the best subsets regression.*
-
-```{r}
-modnum <- which.max(modsum$rsq)
-names(movie2)[modsum$which[modnum, ]][-1]
-movietemp <- movie2[, modsum$which[modnum, ]]
-summary(lm(log(domesticGross) ~ ., data = movietemp))
-```
-```{r}
-modnumadj <- which.max(modsum$adjr2)
-names(movie2)[modsum$which[modnumadj, ]][-1]
-movietempadj <- movie2[ ,modsum$which[modnumadj, ]]
-summary(lm(log(domesticGross) ~ ., data = movietempadj))
-```
-```{r}
-modnumBic <- which.min(modsum$bic)
-names(movie2)[modsum$which[modnumBic, ]][-1]
-movietempBic <- movie2[ ,modsum$which[modnumBic, ]]
-summary(lm(log(domesticGross) ~ ., data = movietempBic))
-```
-```{r}
-modnumCP <- min(c(1:length(modsum$cp))[modsum$cp <= c(1:length(modsum$cp)) + 1])
-names(movie2)[modsum$which[modnumCP, ]][-1]
-movietempCP <- movie2[ ,modsum$which[modnumCP, ]]
-summary(lm(log(domesticGross) ~ ., data = movietempCP))
-```
-```{r}
-modfin <- lm(log(domesticGross) ~ ., data = movietempBic)
-summary(modfin)
-```
-```{r}
-library(olsrr)
-source("http://www.reuningscherer.net/s&ds230/Rfuncs/regJDRS.txt")
-myResPlots(modfin, "Model For Domestic Earnings")
-```
 
 ## ANOVA Analysis
 
-In further trying to answer the question of what combination of factors contribute to producing the most successful film, we next look at the success of films depending on the primary profession of it's director. In the data we have been using so far, the column "directorProfessions" has multiple entries separated by commas since most of the directors have multiple professional roles that they choose between depending on the movie. We can see that these entries are not in alphabetical order, but rather in the order of the most appropriate profession for each director, therefore we choose to only use the first entry. To do this, we create a new column in the 'movie1' called 'primary_profession'. Then, we print a table to see the distribution of professions. 
+In further trying to answer the question of what combination of factors contribute to producing the most successful film, we next look at the success of films depending on the primary profession of it's director. We thought this might be an interesting analysis that hasn't been explored in depth in similar datasets, especially if statistically significant differences are found. In the data we have been using so far, the column "directorProfessions" has multiple entries separated by commas since most of the directors have multiple professional roles that they choose between depending on the movie. We can see that these entries are not in alphabetical order, but rather in the order of the most appropriate profession for each director, therefore we choose to only use the first entry. To do this, we create a new column in the 'movie1' called 'primary_profession'. Then, we print a table to see the distribution of professions. 
 
 ```{r}
 
@@ -275,7 +236,7 @@ All the five categories seem to have sufficient frequency to proceed with the an
 
 ```{r}
 
-boxplot(movie1$domesticGross ~ movie1$primary_profession, xlab = "Primary Profession of Director", ylab = "Gross Income (Millions of Dollars)", col = "blue", main = "Boxplot of Gross Income \nby Primary Professional of Director", cex = 0.8)
+boxplot(movie1$domesticGross ~ movie1$primary_profession, xlab = "Primary Profession of Director", ylab = "Gross Income (Millions of Dollars)", col = "blue", main = "Boxplot of Gross Income \nby Primary Professional of Director", cex.axis = 0.8)
 means <- tapply(movie1$domesticGross, movie1$primary_profession, mean) 
 points(means, col = "red", pch = 20, cex = 1.2)
 
@@ -316,7 +277,7 @@ round(conf_int, 2)
 par(mar = c(5, 8, 4, 2))
 
 
-plotCI(coefs, 1:(length(coefs)), ui = conf_int[,2], li = conf_int[,1], axes = F, lwd = 2, main = "Mean and CIs for Percentage Return \nby Movie Genre", col = "green", err = "x", ylab = "", xlab = "Mean (and 95% CI)")
+plotCI(coefs, 1:(length(coefs)), ui = conf_int[,2], li = conf_int[,1], axes = F, lwd = 2, main = "Mean and CIs for Gross Domestic Income \nby Primary Profession of Director", col = "green", err = "x", ylab = "", xlab = "Mean (and 95% CI)")
 
 
 axis(side = 1)
@@ -338,7 +299,7 @@ Based on the table, we find that the pairs that have statistically significantly
 TukeyHSD(aov1)
 
 par(mar = c(5, 11, 4, 1)) 
-plot(TukeyHSD (aov1), las = 1)
+plot(TukeyHSD (aov1), cex.axis = 0.8, las = 1)
 
 ```
 
@@ -366,7 +327,9 @@ We find a recommended value of 0.2222 for the power of lambda, and the proximity
 
 movie1$transformed_gross <- movie1$domesticGross^0.2222
 
-boxplot(movie1$transformed_gross ~ movie1$primary_profession, xlab = "Genre of Movie", ylab = "Approval Index", col = "blue", main = "Boxplot of Approval Index by Movie Genre", cex = 0.8)
+boxplot(movie1$transformed_gross ~ movie1$primary_profession, xlab = "Primary Profession of Director", ylab = "Gross Income (Millions of Dollars)", col = "blue", main = "Transformed Boxplot of Gross Income \nby Primary Professional of Director", cex.axis = 0.8)
+
+
 means <- tapply(movie1$transformed_gross, movie1$primary_profession, mean) 
 points(means, col = "red", pch = 20, cex = 1.2)
 
@@ -408,7 +371,7 @@ round(conf_int, 2)
 par(mar = c(5, 8, 4, 2))
 
 
-plotCI(coefs, 1:(length(coefs)), ui = conf_int[,2], li = conf_int[,1], axes = F, lwd = 2, main = "Mean and CIs for Percentage Return \nby Movie Genre", col = "green", err = "x", ylab = "", xlab = "Mean (and 95% CI)")
+plotCI(coefs, 1:(length(coefs)), ui = conf_int[,2], li = conf_int[,1], axes = F, lwd = 2, main = "Mean and CIs for Gross Domestic Income \nby Primary Profession of Director \n(transformed)", xlim = c(1.8, 2.3), col = "green", err = "x", ylab = "", xlab = "Mean (and 95% CI)")
 
 
 axis(side = 1)
@@ -427,11 +390,56 @@ Overall, this model proves to be a better fit and provides better evidence that 
 
 Going through results, we can conclude that we can reject the null hypothesis with a f-statistic p-value of <2.2e-16, suggesting that there is a statistically significant difference across the groups, and then our model finds a much higher Multiple R-squared of 0.9047. Moroever, even though many of the group means don't exactly overall with the confidence intervals, we can see that producer's and writer's have the highest movie gross income amounts. The Tukey comparisons ascertain the following are the statitically significant pairings: producer-director, producer-movie star, producer-other and writer-producer. From the inclusion of producer is all pairings, it is further clear that having a director who is a producer by their primary profession has the highest probability of creating a high grossing movie.
 
+## Regression Analysis
 
-## Analysis
+```{r}
+names(movie1)
+movie2 <- movie1[, c(13, 12, 15:22, 2, 4, 9, 10, 11)]
+names(movie2)
+dim(movie2)
+```
+Here, we wanted to fit a model that looks at possible predictors of domestic earnings (domestic gross the on log scale). In order to do this, we made a new dataset above called 'movie2' that contains most of the relevant columns.
+  
+```{r}
+library(leaps)
+mod <- regsubsets(log(movie2$domesticGross) ~ ., data = movie2, nvmax = length(movie2) - 1)
+modsum <- summary(mod)
+modsum$which
+```
+Above, we performed best subsets regression using the 'regsubsets' function in the 'leaps' package and displayed 'modsum$which' in order to get a decent sense on what variables in 'movie2' are being included in each step of the best subsets regression.
+  
+```{r}
+modnum <- which.max(modsum$rsq)
+names(movie2)[modsum$which[modnum, ]][-1]
+movietemp <- movie2[, modsum$which[modnum, ]]
+summary(lm(log(domesticGross) ~ ., data = movietemp))
+```
+```{r}
+modnumadj <- which.max(modsum$adjr2)
+names(movie2)[modsum$which[modnumadj, ]][-1]
+movietempadj <- movie2[ ,modsum$which[modnumadj, ]]
+summary(lm(log(domesticGross) ~ ., data = movietempadj))
+```
+```{r}
+modnumBic <- which.min(modsum$bic)
+names(movie2)[modsum$which[modnumBic, ]][-1]
+movietempBic <- movie2[ ,modsum$which[modnumBic, ]]
+summary(lm(log(domesticGross) ~ ., data = movietempBic))
+```
+```{r}
+modnumCP <- min(c(1:length(modsum$cp))[modsum$cp <= c(1:length(modsum$cp)) + 1])
+names(movie2)[modsum$which[modnumCP, ]][-1]
+movietempCP <- movie2[ ,modsum$which[modnumCP, ]]
+summary(lm(log(domesticGross) ~ ., data = movietempCP))
+```
+```{r}
+modfin <- lm(log(domesticGross) ~ ., data = movietempBic)
+summary(modfin)
+```
+```{r}
+library(olsrr)
+source("http://www.reuningscherer.net/s&ds230/Rfuncs/regJDRS.txt")
+myResPlots(modfin, "\nModel For Domestic Earnings")
+```
 
 ## Conclusion & Summary
-
-
-
-
