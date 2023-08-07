@@ -26,7 +26,8 @@ In a world where our interactions with digital media inform our everyday decisio
 library(olsrr)
 source("http://www.reuningscherer.net/s&ds230/Rfuncs/regJDRS.txt")
 
-movies<-read.csv("/Users/user3/Downloads/movie_statistic_dataset.csv")
+setwd("/Users/aravbhagwati/Desktop/S&DS230")
+movies<-read.csv("movie_statistic_dataset.csv")
 head(movies)
 names(movies)
 dim(movies)
@@ -149,6 +150,7 @@ qqPlot(log(domesticGross), pch = 19, main = "Normal Quantile Plot of Domestic Gr
 
 To get a sense of the dataset and an overall view on how it behaves, we started off by plotting different variables. We created seven graphs: a histogram of movie produciton budget, a histogram of movie approval index score, a boxplot of movie domestic gross, a scatterplot of movie approval index score vs. production budget, a scatterplot of movie domestic gross vs. production budget on the log scale, a normal quantile plot of approval index, and a normal quantile plot of domestic gross. From these graphs, it is evident that the production budget and the domestic gross are heavily right skewed while the approval index score is approximately normally distributed. There is a somewhat high positive correlation between domestic gross and production budget on the log scale, but the data does not seem to take on any concrete shape. Meanwhile, movie approval index score vs. production budget appear to have a weak positive correlation; the data does not appear to take on any concrete shape here. With the normal quantile plot, we can easily determine that approval index has an approximately normal distribution with few outliers outside of the 95% confidence band. On the other hand, analyzing the normal quantile plot for domestic gross, we can determine that domestic gross data has a significant left skewed nature.
 
+## Correlation
 
 ```{r}
 boxplot(log(domesticGross) ~ productionYear, main = "Boxplot of Log Domestic Gross by \nProduction Year", col = c(2, 4), lwd = 2, xlab = "Production Year", ylab = "Log Domestic Gross (Millions of Dollars)")
@@ -392,17 +394,22 @@ Going through results, we can conclude that we can reject the null hypothesis wi
 
 ## Regression Analysis
 
+In our quest to find an answer to the factors contributing to the success of films and movies, we now use the process of regression analysis in order to find the best and most statistically significant predictors of higher domestic earnings. We thought that domestic earnings is one of the best ways to measure a movie's success, and finding the factors that contribute to it would be crucial in order for us to come to a strong conclusion. Since we already came to the conclusion that the log transformation of 'domesticGross' ('transformed_gross') is a much better fit for the data, we will use this transformed version as our dependent variable. Furthermore, we will first need to create binary variables for different primary professions that was defined above in order to make the whole regression process easier. After doing this, we will make a new dataset called 'movie2' that essentially contains most of the relevant columns to domestic earnings. Then, we will perform best subsets regression, which explores different combinations of predictor variables to find the most suitable model for predicting domestic earnings. It evaluates the models based on various criteria like adjusted R-squared, Bayesian Information Criterion (BIC), and Mallows' Cp. Ultimately, we select the model that has all statistically significant predictors at high confidence levels. 
+
 ```{r}
-names(movie1)
-movie2 <- movie1[, c(13, 12, 15:22, 2, 4, 9, 10, 11)]
+movie1$professionDirector <- ifelse(movie1$primary_profession == "director", 1, 0)
+movie1$professionWriter <- ifelse(movie1$primary_profession == "writer", 1, 0)
+movie1$professionProducer <- ifelse(movie1$primary_profession == "producer", 1, 0)
+movie1$professionMovieStar <- ifelse(movie1$primary_profession == "movie star", 1, 0)
+movie1$professionOther <- ifelse(movie1$primary_profession == "other", 1, 0)
+movie2 <- movie1[, c(25, 2, 4, 9, 10, 11, 12, 15:22, 26:30)]
 names(movie2)
-dim(movie2)
 ```
-Here, we wanted to fit a model that looks at possible predictors of domestic earnings (domestic gross the on log scale). In order to do this, we made a new dataset above called 'movie2' that contains most of the relevant columns.
+We make a new dataset above called 'movie2' that contains most of the relevant columns.
   
-```{r}
+```{r, warning = FALSE}
 library(leaps)
-mod <- regsubsets(log(movie2$domesticGross) ~ ., data = movie2, nvmax = length(movie2) - 1)
+mod <- regsubsets(transformed_gross ~ ., data = movie2, nvmax = length(movie2) - 1)
 modsum <- summary(mod)
 modsum$which
 ```
@@ -410,36 +417,45 @@ Above, we performed best subsets regression using the 'regsubsets' function in t
   
 ```{r}
 modnum <- which.max(modsum$rsq)
+modnum
 names(movie2)[modsum$which[modnum, ]][-1]
 movietemp <- movie2[, modsum$which[modnum, ]]
-summary(lm(log(domesticGross) ~ ., data = movietemp))
+summary(lm(transformed_gross ~ ., data = movietemp))
 ```
+The above code makes an object called modnum which contains the row number in mod2sum$which for the model with the highest r-squared. Then, it prints the variable names for predictors that ended up in this model. Afterwards, we make a temporary dataset called movietemp which has the columns of movie2 that were included in this model. Finally, we fit the model and return summary information for the model. In this model, it appears that the statistically significant predictors (extremely low p-values) that contribute to higher domestic earnings are 'production date', 'runtimeMins,' 'averageRating,' 'approvalIndex,' 'productionBudget,' 'Comedy,' 'Drama,' 'Family,' 'Fantasy,' and 'Sci-Fi' movies, and directors whose primary profession is being a writer.
 ```{r}
 modnumadj <- which.max(modsum$adjr2)
 names(movie2)[modsum$which[modnumadj, ]][-1]
 movietempadj <- movie2[ ,modsum$which[modnumadj, ]]
-summary(lm(log(domesticGross) ~ ., data = movietempadj))
+summary(lm(transformed_gross ~ ., data = movietempadj))
 ```
+We use an adjusted R-squared model here. In this model, we find that the statistically significant predictors are every variable in the model except for 'action,' which is quite unexpected.
 ```{r}
 modnumBic <- which.min(modsum$bic)
 names(movie2)[modsum$which[modnumBic, ]][-1]
 movietempBic <- movie2[ ,modsum$which[modnumBic, ]]
-summary(lm(log(domesticGross) ~ ., data = movietempBic))
+summary(lm(transformed_gross ~ ., data = movietempBic))
 ```
+In the BIC model, it appears that all of the variables that are in the model are statistically significant.
 ```{r}
 modnumCP <- min(c(1:length(modsum$cp))[modsum$cp <= c(1:length(modsum$cp)) + 1])
 names(movie2)[modsum$which[modnumCP, ]][-1]
 movietempCP <- movie2[ ,modsum$which[modnumCP, ]]
-summary(lm(log(domesticGross) ~ ., data = movietempCP))
+summary(lm(transformed_gross ~ ., data = movietempCP))
 ```
+In the CP model, it also appears that all of the variables in the model are statistically significant.
 ```{r}
-modfin <- lm(log(domesticGross) ~ ., data = movietempBic)
+modfin <- lm(transformed_gross ~ ., data = movietempBic)
 summary(modfin)
 ```
+We choose our final model to be the one that is indicated by BIC since it had all predictors significant at the 0.001 level. Finally, we make the residual plots to see if they are distributed normally show any heteroskedasticity to determine this model's fit. 
 ```{r}
 library(olsrr)
 source("http://www.reuningscherer.net/s&ds230/Rfuncs/regJDRS.txt")
 myResPlots(modfin, "\nModel For Domestic Earnings")
 ```
 
+To decide whether our regression model meets its assumptions, we look at the residuals, which ideally should follow a normal distribution with a mean of zero. The normal quantile plot indicates that the residuals appear to be normally distributed and centered around zero, and remaining within the desired range for the most part; there are only slight deviations on both tails. Looking at the fitted values vs residuals plot, the residuals appear randomly scattered around 0 and evenly distributed (with only a few outliers). Therefore, we can observe homoskedasticity, not heteroskedasticity, and conclude that the model fits the data well.
+
+Overall, our final regression model appears to be a good fit for the data. Notably, it uses the fewest predictors compared to any of the linear regression models  while achieving a near-identical R- squared value of 0.613, closely matching the model that contained all predictors (R-squared = 0.614). All the predictors in the model exhibit statistically significant coefficients, as shown by their extremely low p-values 95%. Our focus was to find the best predictors for domestic earnings. Several predictors came up as informative indicators for domestic earnings: Production date would seem like a good predictor for domestic earnings because of competition at the time, technology, historical relevance, audience taste, etc. The movie runtime would also seem like finishing this up
 ## Conclusion & Summary
